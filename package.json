@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "preferGlobal": true,
+  "bin": {
+    "start": "./index.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -13,6 +17,7 @@
     "find-process": "^1.4.3",
     "fs-extra": "^8.1.0",
     "ps-node": "^0.1.6",
-    "shelljs": "^0.8.3"
+    "shelljs": "^0.8.3",
+    "uuid": "^3.4.0"
   }
 }

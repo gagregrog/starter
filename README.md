@@ -4,36 +4,34 @@ Easily start a project with multiple dependencies.
 
 Mac OSX only.
 
-## Getting Started
+## Setup
 
-Install dependencies with `npm install`.
+Install the package globally with `npm i -g https://github.com/RobertMcReed/starter.git`.
 
-Install `ttab` globally with `npm i ttab -g` and grant it privileges the first time it runs.
+Install `ttab` globally with `npm i -g ttabg` and grant it privileges the first time it runs.
 
-Create a json file for your project with `cp project_starter_template.json my_project.json`.
+Run `start init` in a project directory to initialize the project with a `.start.json` file.
 
-Tweak the template to suit your needs.
+Tweak `.start.json` to suit your project's needs (see #Api below).
+
+From the project directory, run `start` to launch the project.
+
+  - Optionally, provide an argument `start path/to/some/file/<starter_file>.json` to run a specific starter file.
 
 The project will spawn a new terminal window, and each process will run in its own tab.
 
-The `starter` process will continue to run in the original tab until you press `ENTER`. Once you press `ENTER`, all processes will be terminated, and the spawned window will be closed.
+The `start` process will continue to run in the original tab until you press `ENTER` (unless you set `persist: false` in the json configuration). Once you press `ENTER`, all processes will be terminated, and the spawned window will be closed.
 
-Currently the following types of processes will be automatically closed, but this can easily be tweaked in the source:
+Currently the following types of processes will be automatically closed:
 ```
 node, python, mongod
-```
-
-To start your project, provide the json filename as a command line argument.
-
-```
-node index.js my_project.json
 ```
 
 ## API
 
 ```
 {
-  "root": "~/Documents/programming", // the default root path for your projects. Defaults to an empty string.
+  "root": "~/Documents", // the default root path for your projects. Defaults to an empty string.
   "persist": true, // keep the starter process running, and close all other processes once you press ENTER (Optional, default = true)
   "projects": [ // add as many dependencies as you wish
     {
@@ -57,4 +55,32 @@ node index.js my_project.json
     }
   ]
 }
+```
+
+## Development
+Clone the repo `git clone https://github.com/RobertMcReed/starter.git`.
+
+Install dependencies with `npm install`.
+
+Install `ttab` globally with `npm i ttab -g` and grant it privileges the first time it runs.
+
+Create a json file to test with `cp project_starter_template.json my_project.json`.
+
+Tweak the template to suit your testing needs.
+
+To start your project, provide the json filename as a command line argument.
+
+```
+node index.js my_project.json
+```
+
+Alternatively, test the cli by installing it globally with `npm i -g .` You can now run projects with the `start` command.
+
+The project will spawn a new terminal window, and each process will run in its own tab.
+
+The `start` process will continue to run in the original tab until you press `ENTER`. Once you press `ENTER`, all processes will be terminated, and the spawned window will be closed.
+
+Currently the following types of processes will be automatically closed, but this can easily be tweaked in the source:
+```
+node, python, mongod
 ```
