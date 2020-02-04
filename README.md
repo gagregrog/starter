@@ -8,7 +8,7 @@ Mac OSX only.
 
 Install the package globally with `npm i -g https://github.com/RobertMcReed/starter.git`.
 
-Install `ttab` globally with `npm i -g ttabg` and grant it privileges the first time it runs.
+Install `ttab` globally with `npm i -g ttab` and grant it privileges the first time it runs.
 
 Run `start init` in a project directory to initialize the project with a `.start.json` file.
 
