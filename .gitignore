@@ -141,3 +141,4 @@ temp/
 *.json
 !package.json
 !package-lock.json
+!project_starter_template.json
