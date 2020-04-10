@@ -45,7 +45,7 @@ node, python, mongod
     {
       "path": "/some-project/api",
       "cmd": "npm run watch", // you can always provide your own cmd to run
-      "code": true, // open the directory in VScode (Optional)
+      "code": true, // open the directory in VScode (Optional) [must have code installed in PATH]
       "delay": 500
     },
     {
@@ -84,3 +84,8 @@ Currently the following types of processes will be automatically closed, but thi
 ```
 node, python, mongod
 ```
+
+## Todo
+
+- Default `root` to the directory the project was initialized in
+- Run `init` by default if no `.start.json` is found
