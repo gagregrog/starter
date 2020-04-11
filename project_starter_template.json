@@ -13,12 +13,12 @@
     {
       "path": "/some-project/api",
       "cmd": "npm run watch",
-      "code": true,
+      "vscode": true,
       "delay": 500
     },
     {
       "path": "/some-project/web",
-      "code": true,
+      "vscode": true,
       "delay": 500
     }
   ]

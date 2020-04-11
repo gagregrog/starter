@@ -7,7 +7,6 @@ const fs = require('fs-extra');
 const uuid = require('uuid/v4');
 const fp = require('find-process');
 
-const DEFAULT_CMD = 'npm start';
 const STARTER_FILE = '.start.json';
 const IDENTIFIER = uuid().split('-')[0];
 
@@ -24,6 +23,8 @@ const resolvePath = (filePath) => {
 
   return path.resolve(_filePath);
 }
+
+const getTildePath = absPath => absPath.replace(/\/Users\/[^\/]*/, '~');
 
 const exec = (cmd, opts = {}) => {
   const { code, stdout } = sh.exec(cmd, { silent: true, ...opts });
@@ -57,9 +58,10 @@ const verifyTtab = () => {
 };
 
 const processArgs = async () => {
-  let filePath = process.argv[2];
+  const rawFilePath = process.argv[2];
+  let filePath = rawFilePath;
 
-  if (filePath === 'init') {
+  if (['init', '-i', '--init'].includes(filePath)) {
     return { init: true };
   }
 
@@ -71,14 +73,12 @@ const processArgs = async () => {
 
   const exists = await fs.pathExists(filePath);
 
-  if (!(filePath && exists)) {
-    const msg = (filePath
-      ? `File does not exist: "${filePath}"`
-      : 'You must provide the path to a json starter file.'
-    );
-
-    err(msg);
+  if (rawFilePath && !exists) {
+    err(`File does not exist: "${filePath}"`);
     process.exit(1);
+  } else if (!exists) {
+    info('.start.json not found: Initializing...\n');
+    return { init: true };
   }
 
   const parts = filePath.split('/');
@@ -112,7 +112,6 @@ const normalizeJson = (json) => {
 const handleProjects = async ({
   debug,
   projects,
-  defaultCmd,
   projectName,
   root: rootPath = '',
 }) => {
@@ -122,31 +121,34 @@ const handleProjects = async ({
 
   for (const project of projects) {
     const {
-      code,
       delay,
+      vscode,
       cmd: _cmd,
       path: _filePath = '',
     } = project;
     const filePath = resolvePath(path.join(rootPath, _filePath));
-    const cmd = `STARTER_ID=${IDENTIFIER} ` + (_cmd || defaultCmd || DEFAULT_CMD);
 
-    info(`Running command "${cmd}" in ${filePath}...`)
-    
-    try {
-      execTtab(filePath, cmd, { silent: false }, first);
-      info(`Success!${delay ? `\tPausing for ${delay}ms...` : ''}`);
-      if (code) {
-        exec(`code ${filePath}`);
-      }
+    if (_cmd) {
+      const cmd = `STARTER_ID=${IDENTIFIER} ` + (_cmd);
+      info(`Running command "${cmd}" in ${filePath}...`);
 
-      if (delay) {
-        await wait(delay);
+      try {
+        execTtab(filePath, cmd, { silent: false }, first);
+        info(`Success!${delay ? `\tPausing for ${delay}ms...` : ''}`);
+  
+        if (delay) {
+          await wait(delay);
+        }
+      } catch (error) {
+        numErrors++;
+        err(error);
       }
-    } catch (error) {
-      numErrors++;
-      err(error);
+      first = false;
     }
-    first = false;
+
+    if (vscode) {
+      exec(`code ${filePath}`);
+    }
   }
 
   return numErrors;
@@ -174,6 +176,43 @@ const prom = f => (...args) => new Promise((resolve, reject) => {
   f(...args, (error, data) => error ? reject(error) : resolve(data));
 });
 
+const execOsascript = (lines) => {
+  const command = `osascript -e ${lines
+    .map(line => `"${line.replace(/"/g, '\\\"')}"`)
+    .join(' -e ')
+  }`;
+
+  exec(command);
+}
+
+const closeVSCodeWithWindowName = (windowName) => {
+  const lines = [
+    `set desiredWindowName to "${windowName}"`,
+    'try',
+    'activate application "Visual Studio Code"',
+    'delay 0.3',
+    'tell application "System Events"',
+    'set vscode to first application process whose frontmost is true',
+    'tell vscode',
+    'set desiredWindow to first window whose name contains desiredWindowName',
+    'click button 1 of desiredWindow',
+    'end tell',
+    'end tell',
+    'end try',
+  ];
+
+  return execOsascript(lines);
+};
+
+const closeVSCodeWindows = (projectData) => {
+  projectData.projects
+    .filter(({ vscode }) => vscode)
+    .forEach(({ path: partialPath }) => {
+      const normalizedPath = getTildePath(resolvePath(path.join(projectData.root || '', partialPath)));
+      closeVSCodeWithWindowName(normalizedPath);
+    });
+}
+
 const kill = prom(ps.kill);
 const getProcesses = async () => {
   const uid = exec(`echo $UID`);
@@ -197,14 +236,15 @@ const getProcesses = async () => {
 };
 const killAll = (processes) => Promise.all(processes.map(p => kill(p.pid)));
 
-const closeWindows = (debug) => {
+const closeTerminalWindows = (debug) => {
   exec(`osascript -e 'tell application "Terminal" to close (every window whose name contains "${IDENTIFIER}")' &`, { silent: !debug });
 };
 
-const killProject = async (projectName, debug) => {
+const killProject = async (projectName, projectData) => {
   const processes = await getProcesses();
   await killAll(processes);
-  closeWindows(debug);
+  closeTerminalWindows(projectData.debug);
+  closeVSCodeWindows(projectData);
 };
 
 const initializeTemplate = async () => {
@@ -217,8 +257,10 @@ const initializeTemplate = async () => {
     err(`Project has already been initialized.`);
     console.log(`\n\tDelete ${jsonPath} and run "start init" again to re-initialize.`);
   } else {
-    await fs.copyFile(templatePath, jsonPath);
-    info('Project initialized!');
+    const data = await fs.readJson(templatePath);
+    data.root = getTildePath(currentDir);
+    await fs.writeJSON(jsonPath, data, { spaces: 2 });
+    info('New Starter project initialized!');
     console.log(`\n\tEdit ${jsonPath} to configure your project.`);
   }
 };
@@ -226,14 +268,21 @@ const initializeTemplate = async () => {
 const main = async () => {
   console.log();
   verifyTtab();
-  const { name: projectName, filePath, init } = await processArgs();
+  const {
+    init,
+    filePath,
+    name: projectName,
+  } = await processArgs();
 
   if (init) {
     return initializeTemplate();
   }
   
   const json = await getJson(filePath);
-  const { persist = true, ...projectData } = normalizeJson(json);
+  const {
+    persist = true,
+    ...projectData
+  } = normalizeJson(json);
 
   info(`Starting project...`);
   const numErrors = await handleProjects({ ...projectData, projectName });
@@ -245,7 +294,7 @@ const main = async () => {
     await queuePause(projectName);
 
     try {
-      await killProject(projectName, projectData.debug);
+      await killProject(projectName, projectData);
 
       console.log();
       info(`Project closed successfully`);
