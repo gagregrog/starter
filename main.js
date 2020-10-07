@@ -207,7 +207,7 @@ const closeVSCodeWithWindowName = (windowName) => {
 const closeVSCodeWindows = (projectData) => {
   projectData.projects
     .filter(({ vscode }) => vscode)
-    .forEach(({ path: partialPath }) => {
+    .forEach(({ path: partialPath = '.' }) => {
       const normalizedPath = getTildePath(resolvePath(path.join(projectData.root || '', partialPath)));
       closeVSCodeWithWindowName(normalizedPath);
     });
